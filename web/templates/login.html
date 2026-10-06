@@ -1,0 +1,17 @@
+{{define "content"}}
+<section class="login">
+  <div class="login-art">{{.Art}}<span class="login-stamp">est. today</span></div>
+  <div class="login-card">
+    <p class="wordmark big">coffee <em><span>(g)</span>rate</em></p>
+    <p class="login-lede">A journal for every bag, every shot, every tiny turn of the grinder.</p>
+    {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
+    <form method="post" action="/login" class="login-form">
+      <input type="hidden" name="next" value="{{.Next}}">
+      <label class="field"><span>Password</span>
+        <input type="password" name="password" autocomplete="current-password" required autofocus>
+      </label>
+      <button class="btn btn-accent btn-lg" type="submit">Come in {{icon "arrow"}}</button>
+    </form>
+  </div>
+</section>
+{{end}}

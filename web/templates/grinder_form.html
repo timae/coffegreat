@@ -1,0 +1,37 @@
+{{define "content"}}
+{{$g := .Grinder}}
+<a class="back" href="/gear">{{icon "back"}} Gear</a>
+<form class="form narrow" method="post" action="{{if .IsNew}}/gear/grinders{{else}}/gear/grinders/{{$g.ID}}{{end}}">
+  <header class="form-head">
+    <p class="eyebrow">{{if .IsNew}}New grinder{{else}}Editing grinder{{end}}</p>
+    <h1 class="display">{{if .IsNew}}The grinder{{else}}{{$g.Name}}{{end}}</h1>
+  </header>
+  {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
+
+  <section class="form-section">
+    <div class="fields">
+      <label class="field"><span>Name</span>
+        <input name="name" value="{{$g.Name}}" required maxlength="120" placeholder="e.g. Niche Zero" {{if .IsNew}}autofocus{{end}}></label>
+      <label class="field"><span>Brand</span>
+        <input name="brand" value="{{$g.Brand}}" maxlength="120" placeholder="Niche, Eureka, Comandante…"></label>
+      <fieldset class="field span-2"><legend>Burrs</legend>
+        <div class="pills">
+          {{range opts "burr"}}<label><input type="radio" name="burr_type" value="{{.}}" {{if eqi . $g.BurrType}}checked{{end}}><span>{{.}}</span></label>{{end}}
+        </div>
+      </fieldset>
+      <label class="field"><span>Burr size <em>mm</em></span>
+        <input type="number" name="burr_size_mm" value="{{num $g.BurrSizeMM}}" min="0" max="200" inputmode="numeric" placeholder="63"></label>
+      <label class="field span-2"><span>Notes</span>
+        <textarea name="notes" rows="3" maxlength="2000" placeholder="Zero point, RDT, alignment…">{{$g.Notes}}</textarea></label>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    {{if not .IsNew}}<button class="btn btn-ghost danger" type="submit" form="delete-form">{{icon "trash"}}<span>Delete</span></button>{{end}}
+    <span class="spacer"></span>
+    <a class="btn btn-ghost" href="/gear">Cancel</a>
+    <button class="btn btn-accent btn-lg" type="submit">Save grinder</button>
+  </div>
+</form>
+{{if not .IsNew}}<form id="delete-form" method="post" action="/gear/grinders/{{$g.ID}}/delete" data-confirm="Remove this grinder? Shots keep their data."></form>{{end}}
+{{end}}

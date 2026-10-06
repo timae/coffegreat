@@ -1,0 +1,73 @@
+{{define "content"}}
+<section class="hero">
+  <p class="eyebrow">{{today}}</p>
+  <h1 class="display">{{greeting}}</h1>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">{{.Stats.ShotsWeek}}</span><span class="stat-label">shots this week</span></div>
+    <div class="stat"><span class="stat-num">{{if .Stats.AvgRating30}}{{num1 .Stats.AvgRating30}}{{else}}–{{end}}</span><span class="stat-label">avg. shot · 30 days</span></div>
+    <div class="stat"><span class="stat-num">{{.Stats.Beans}}</span><span class="stat-label">coffees logged</span></div>
+    {{if .Stats.FavBean}}<a class="stat stat-fav" href="/beans/{{.Stats.FavBeanID}}"><span class="stat-num">{{.Stats.FavBean}}</span><span class="stat-label">top of the shelf</span></a>{{end}}
+  </div>
+</section>
+
+{{if .Flavors}}
+<div class="ticker" aria-hidden="true"><div class="ticker-track">
+  {{range .Flavors}}<span>{{.}}</span>{{end}}{{range .Flavors}}<span>{{.}}</span>{{end}}{{range .Flavors}}<span>{{.}}</span>{{end}}
+</div></div>
+{{end}}
+
+{{if not .SetupDone}}
+<section class="setup">
+  <header class="section-head"><h2>Set up your bar</h2><p class="muted">Four steps and you're pulling.</p></header>
+  <ol class="steps">
+    <li class="{{if gt .Stats.Grinders 0}}done{{end}}"><a href="{{if gt .Stats.Grinders 0}}/gear{{else}}/gear/grinders/new{{end}}"><span class="step-n">01</span><span class="step-t">Add your grinder</span>{{icon "grinder"}}</a></li>
+    <li class="{{if gt .Stats.Brewers 0}}done{{end}}"><a href="{{if gt .Stats.Brewers 0}}/gear{{else}}/gear/brewers/new{{end}}"><span class="step-n">02</span><span class="step-t">Add your machine</span>{{icon "cup"}}</a></li>
+    <li class="{{if gt .Stats.Beans 0}}done{{end}}"><a href="{{if gt .Stats.Beans 0}}/beans{{else}}/beans/new{{end}}"><span class="step-n">03</span><span class="step-t">Add a coffee</span>{{icon "bean"}}</a></li>
+    <li class="{{if gt .Stats.Recipes 0}}done{{end}}"><a href="{{if gt .Stats.Recipes 0}}/recipes{{else}}/recipes/new{{end}}"><span class="step-n">04</span><span class="step-t">Dial in a recipe</span>{{icon "dial"}}</a></li>
+  </ol>
+</section>
+{{end}}
+
+<section class="grid-2">
+  <div class="panel">
+    <header class="panel-head"><h2>Quick pull</h2><a class="link" href="/recipes">All recipes {{icon "arrow"}}</a></header>
+    {{if .Recipes}}
+    <div class="quick-list">
+      {{range .Recipes}}
+      <a class="quick" href="/shots/new?recipe={{.ID}}">
+        <span class="quick-ratio">{{ratio .Ratio}}</span>
+        <span class="quick-main"><strong>{{.Name}}</strong><small class="mono">{{num .DoseG}}g → {{num .YieldG}}g{{with .TimeS}} · {{num .}}s{{end}}{{with .TempC}} · {{num .}}°{{end}}</small></span>
+        <span class="quick-go">{{icon "arrow"}}</span>
+      </a>
+      {{end}}
+    </div>
+    {{else}}
+      {{template "empty" (dict "Icon" "dial" "Title" "No recipes yet" "Text" "Save a dose, yield and time once — pull it with one tap forever." "Href" "/recipes/new" "CTA" "New recipe")}}
+    {{end}}
+  </div>
+
+  <div class="panel">
+    <header class="panel-head"><h2>Rhythm</h2><span class="muted">last {{len .Pulse}} shots</span></header>
+    {{if .Pulse}}
+      {{pulseBars .Pulse}}
+      <ul class="legend"><li><i class="p-sour"></i>sour</li><li><i class="p-good"></i>balanced</li><li><i class="p-bitter"></i>bitter</li><li><i class="p-rated"></i>rated</li></ul>
+    {{else}}
+      {{template "empty" (dict "Icon" "cup" "Title" "Nothing pulled yet" "Text" "Each shot you log becomes a bar here — height is how much you liked it." "Href" "/shots/new" "CTA" "Log first shot")}}
+    {{end}}
+  </div>
+</section>
+
+{{if .Recent}}
+<section>
+  <header class="section-head"><h2>Recent shots</h2><a class="link" href="/shots">Full log {{icon "arrow"}}</a></header>
+  <ul class="shot-list card">{{range .Recent}}{{template "shot_row" .}}{{end}}</ul>
+</section>
+{{end}}
+
+{{if .TopBeans}}
+<section>
+  <header class="section-head"><h2>On the shelf</h2><a class="link" href="/beans">All beans {{icon "arrow"}}</a></header>
+  <div class="bean-grid">{{range .TopBeans}}{{template "bean_card" .}}{{end}}</div>
+</section>
+{{end}}
+{{end}}

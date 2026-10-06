@@ -1,0 +1,42 @@
+{{define "content"}}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Portafilter &amp; brew profiles</p>
+    <h1 class="display">Recipes<sup>{{len .Recipes}}</sup></h1>
+  </div>
+  <a class="btn btn-accent" href="/recipes/new">{{icon "plus"}}<span>New recipe</span></a>
+</header>
+
+{{if .Recipes}}
+<div class="recipe-grid">
+  {{range .Recipes}}
+  <article class="recipe-card">
+    <header>
+      <p class="eyebrow">{{or .BrewMethod "Recipe"}}{{with .Basket}} · {{.}}{{end}}</p>
+      <h3>{{.Name}}</h3>
+    </header>
+    <div class="ratio-viz">
+      <div class="rv-top"><span class="rv-big">{{ratio .Ratio}}</span><span class="rv-name">{{ratioName .Ratio .BrewMethod}}</span></div>
+      <div class="rv-bar"><span class="rv-dose" style="width: {{.DosePct}}%"></span><span class="rv-yield"></span></div>
+      <div class="rv-legend mono"><span>{{num .DoseG}}g in</span><span>{{num .YieldG}}g out</span></div>
+    </div>
+    <dl class="specs">
+      {{with .TimeS}}<div><dt>{{icon "timer"}}</dt><dd>{{num .}}<u>s</u></dd></div>{{end}}
+      {{with .TempC}}<div><dt>{{icon "thermo"}}</dt><dd>{{num .}}<u>°C</u></dd></div>{{end}}
+      {{with .GrindSetting}}<div><dt>{{icon "grinder"}}</dt><dd>{{.}}</dd></div>{{end}}
+      {{with .PressureBar}}<div><dt>{{icon "scale"}}</dt><dd>{{num .}}<u>bar</u></dd></div>{{end}}
+      {{with .PreinfusionS}}<div><dt>{{icon "drop"}}</dt><dd>{{num .}}<u>s pre</u></dd></div>{{end}}
+    </dl>
+    <p class="recipe-gear muted">{{or .BrewerName "Any machine"}} · {{or .GrinderName "any grinder"}}{{with .BeanName}} · for <b>{{.}}</b>{{end}}</p>
+    <footer>
+      <a class="btn btn-accent" href="/shots/new?recipe={{.ID}}">{{icon "cup"}}<span>Pull this</span></a>
+      <a class="icon-btn" href="/recipes/{{.ID}}/edit" aria-label="Edit {{.Name}}">{{icon "edit"}}</a>
+      <span class="recipe-stats muted">{{.ShotCount}} shots{{with .AvgRating}} · {{num1 .}}/5{{end}}</span>
+    </footer>
+  </article>
+  {{end}}
+</div>
+{{else}}
+  {{template "empty" (dict "Icon" "dial" "Title" "No recipes yet" "Text" "A recipe is your dialed-in starting point: basket, dose, yield, time, temperature, grind." "Href" "/recipes/new" "CTA" "Create a recipe")}}
+{{end}}
+{{end}}

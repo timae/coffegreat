@@ -1,0 +1,82 @@
+{{define "content"}}
+{{$b := .Bean}}
+<a class="back" href="/beans">{{icon "back"}} All beans</a>
+
+<article class="bean-hero">
+  <div class="bean-hero-art">
+    {{label $b}}
+    <div class="bag-tag">
+      <span class="mono">{{if $b.IsBlend}}BLEND{{else}}SINGLE ORIGIN{{end}}</span>
+      <span class="mono">№ {{printf "%03d" $b.ID}}</span>
+    </div>
+  </div>
+  <div class="bean-hero-info">
+    {{with $b.Roaster}}<p class="eyebrow">{{.}}</p>{{end}}
+    <h1 class="display">{{$b.Name}}</h1>
+    {{with $b.Flavors}}<ul class="chips">{{range .}}<li>{{.}}</li>{{end}}</ul>{{end}}
+
+    <dl class="facts">
+      {{with $b.Origin}}<div><dt>Origin</dt><dd>{{.}}</dd></div>{{end}}
+      {{with $b.Region}}<div><dt>Region</dt><dd>{{.}}</dd></div>{{end}}
+      {{with $b.Varietal}}<div><dt>Varietal</dt><dd>{{.}}</dd></div>{{end}}
+      {{with $b.Process}}<div><dt>Process</dt><dd>{{.}}</dd></div>{{end}}
+      {{with $b.RoastLevel}}<div><dt>Roast</dt><dd><span class="roast-dot roast-{{lower .}}"></span>{{.}}</dd></div>{{end}}
+      {{if $b.RoastDate}}<div><dt>Roasted</dt><dd>{{date $b.RoastDate}} <small class="muted">· {{$b.DaysOffRoast}}d off roast</small></dd></div>{{end}}
+      {{if or $b.WeightG $b.Price}}<div><dt>Bag</dt><dd>{{with $b.WeightG}}{{num .}} g{{end}}{{if and $b.WeightG $b.Price}} · {{end}}{{with $b.Price}}{{printf "%.2f" (fval .)}}{{end}}</dd></div>{{end}}
+    </dl>
+
+    <div class="actions">
+      <a class="btn btn-accent" href="/shots/new?bean={{$b.ID}}">{{icon "cup"}}<span>Pull a shot</span></a>
+      <a class="btn btn-ghost" href="/beans/{{$b.ID}}/edit">{{icon "edit"}}<span>Edit</span></a>
+      {{template "delete" (dict "Action" (printf "/beans/%d/delete" $b.ID) "Confirm" "Delete this coffee? Its shots stay in the log.")}}
+    </div>
+  </div>
+</article>
+
+<section class="grid-2">
+  <div class="panel tasting">
+    <header class="panel-head"><h2>Tasting</h2>{{if $b.BuyAgain}}<span class="tag tag-accent">{{icon "heart"}} would buy again</span>{{end}}</header>
+    {{if $b.Rated}}
+      <div class="tasting-body">
+        <div class="score-ring" style="--p: {{pct $b.Overall 10}}">
+          <span class="score-num">{{num $b.Overall}}</span><span class="score-of">/ 10</span>
+        </div>
+        <div class="radar-wrap">{{radar $b}}</div>
+      </div>
+    {{else}}
+      {{template "empty" (dict "Icon" "spark" "Title" "Not rated yet" "Text" "Tasted it? Score aroma, acidity, sweetness and more — the radar draws itself." "Href" (printf "/beans/%d/edit#rate" $b.ID) "CTA" "Rate it")}}
+    {{end}}
+  </div>
+
+  <div class="panel">
+    <header class="panel-head">
+      <h2>Shots</h2>
+      <span class="muted">{{$b.ShotCount}} pulled{{with $b.AvgShot}} · avg {{num1 .}}/5{{end}}{{if $b.LastShot}} · last {{ago $b.LastShot}}{{end}}</span>
+    </header>
+    {{if .Shots}}
+      <ul class="shot-list">{{range .Shots}}{{template "shot_row" .}}{{end}}</ul>
+    {{else}}
+      {{template "empty" (dict "Icon" "cup" "Title" "No shots with this yet" "Href" (printf "/shots/new?bean=%d" $b.ID) "CTA" "Pull the first one")}}
+    {{end}}
+    {{if .Recipes}}
+      <h3 class="sub-head">Recipes for this coffee</h3>
+      <div class="quick-list">
+      {{range .Recipes}}
+        <a class="quick" href="/shots/new?recipe={{.ID}}">
+          <span class="quick-ratio">{{ratio .Ratio}}</span>
+          <span class="quick-main"><strong>{{.Name}}</strong><small class="mono">{{num .DoseG}}g → {{num .YieldG}}g{{with .TimeS}} · {{num .}}s{{end}}</small></span>
+          <span class="quick-go">{{icon "arrow"}}</span>
+        </a>
+      {{end}}
+      </div>
+    {{end}}
+  </div>
+</section>
+
+{{with $b.Notes}}
+<section class="panel notes">
+  <header class="panel-head"><h2>Notes</h2></header>
+  <p class="prose">{{.}}</p>
+</section>
+{{end}}
+{{end}}

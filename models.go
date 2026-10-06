@@ -1,0 +1,555 @@
+package main
+
+import (
+	"context"
+	"database/sql"
+	"strings"
+	"time"
+)
+
+// ---------- option lists ----------
+
+var (
+	BurrTypes   = []string{"Flat", "Conical", "Blade", "Other"}
+	BrewMethods = []string{"Espresso", "Pour-over", "AeroPress", "French press", "Moka pot", "Cold brew", "Filter machine", "Other"}
+	Processes   = []string{"Washed", "Natural", "Honey", "Anaerobic", "Other"}
+	RoastLevels = []string{"Light", "Medium-light", "Medium", "Medium-dark", "Dark"}
+	FlavorIdeas = []string{"Chocolate", "Caramel", "Hazelnut", "Almond", "Berry", "Cherry", "Citrus",
+		"Stone fruit", "Tropical", "Red apple", "Floral", "Jasmine", "Honey", "Brown sugar", "Spice", "Tea-like", "Winey", "Vanilla"}
+)
+
+// Axis is one spoke of the flavour radar.
+type Axis struct {
+	Key, Label string
+	Value      *int64
+}
+
+// ---------- gear ----------
+
+type Grinder struct {
+	ID         int64
+	Name       string
+	Brand      string
+	BurrType   string
+	BurrSizeMM *int64
+	Notes      string
+	CreatedAt  time.Time
+	ShotCount  int64
+}
+
+type Brewer struct {
+	ID            int64
+	Name          string
+	Brand         string
+	Method        string
+	PortafilterMM *int64
+	Notes         string
+	CreatedAt     time.Time
+	ShotCount     int64
+}
+
+func (b Brewer) IsEspresso() bool { return strings.EqualFold(b.Method, "espresso") }
+
+const grinderCols = `g.id, g.name, g.brand, g.burr_type, g.burr_size_mm, g.notes, g.created_at,
+	(SELECT COUNT(*) FROM shots s WHERE s.grinder_id = g.id)`
+
+func scanGrinder(sc interface{ Scan(...any) error }) (Grinder, error) {
+	var g Grinder
+	err := sc.Scan(&g.ID, &g.Name, &g.Brand, &g.BurrType, &g.BurrSizeMM, &g.Notes, &g.CreatedAt, &g.ShotCount)
+	return g, err
+}
+
+func listGrinders(ctx context.Context, db *sql.DB) ([]Grinder, error) {
+	rows, err := db.QueryContext(ctx, `SELECT `+grinderCols+` FROM grinders g ORDER BY g.name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Grinder
+	for rows.Next() {
+		g, err := scanGrinder(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, g)
+	}
+	return out, rows.Err()
+}
+
+func getGrinder(ctx context.Context, db *sql.DB, id int64) (Grinder, error) {
+	return scanGrinder(db.QueryRowContext(ctx, `SELECT `+grinderCols+` FROM grinders g WHERE g.id=$1`, id))
+}
+
+func saveGrinder(ctx context.Context, db *sql.DB, g *Grinder) error {
+	if g.ID == 0 {
+		return db.QueryRowContext(ctx, `INSERT INTO grinders (name, brand, burr_type, burr_size_mm, notes)
+			VALUES ($1,$2,$3,$4,$5) RETURNING id`, g.Name, g.Brand, g.BurrType, g.BurrSizeMM, g.Notes).Scan(&g.ID)
+	}
+	_, err := db.ExecContext(ctx, `UPDATE grinders SET name=$1, brand=$2, burr_type=$3, burr_size_mm=$4, notes=$5 WHERE id=$6`,
+		g.Name, g.Brand, g.BurrType, g.BurrSizeMM, g.Notes, g.ID)
+	return err
+}
+
+const brewerCols = `b.id, b.name, b.brand, b.method, b.portafilter_mm, b.notes, b.created_at,
+	(SELECT COUNT(*) FROM shots s WHERE s.brewer_id = b.id)`
+
+func scanBrewer(sc interface{ Scan(...any) error }) (Brewer, error) {
+	var b Brewer
+	err := sc.Scan(&b.ID, &b.Name, &b.Brand, &b.Method, &b.PortafilterMM, &b.Notes, &b.CreatedAt, &b.ShotCount)
+	return b, err
+}
+
+func listBrewers(ctx context.Context, db *sql.DB) ([]Brewer, error) {
+	rows, err := db.QueryContext(ctx, `SELECT `+brewerCols+` FROM brewers b ORDER BY b.name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Brewer
+	for rows.Next() {
+		b, err := scanBrewer(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+func getBrewer(ctx context.Context, db *sql.DB, id int64) (Brewer, error) {
+	return scanBrewer(db.QueryRowContext(ctx, `SELECT `+brewerCols+` FROM brewers b WHERE b.id=$1`, id))
+}
+
+func saveBrewer(ctx context.Context, db *sql.DB, b *Brewer) error {
+	if b.ID == 0 {
+		return db.QueryRowContext(ctx, `INSERT INTO brewers (name, brand, method, portafilter_mm, notes)
+			VALUES ($1,$2,$3,$4,$5) RETURNING id`, b.Name, b.Brand, b.Method, b.PortafilterMM, b.Notes).Scan(&b.ID)
+	}
+	_, err := db.ExecContext(ctx, `UPDATE brewers SET name=$1, brand=$2, method=$3, portafilter_mm=$4, notes=$5 WHERE id=$6`,
+		b.Name, b.Brand, b.Method, b.PortafilterMM, b.Notes, b.ID)
+	return err
+}
+
+// ---------- beans ----------
+
+type Bean struct {
+	ID          int64
+	Name        string
+	Roaster     string
+	Origin      string
+	Region      string
+	Varietal    string
+	Process     string
+	RoastLevel  string
+	IsBlend     bool
+	RoastDate   *time.Time
+	WeightG     *int64
+	Price       *float64
+	FlavorNotes string
+	Notes       string
+	Overall     *float64
+	Aroma       *int64
+	Acidity     *int64
+	Sweetness   *int64
+	Body        *int64
+	Bitterness  *int64
+	Aftertaste  *int64
+	Balance     *int64
+	BuyAgain    bool
+	CreatedAt   time.Time
+
+	ShotCount int64
+	AvgShot   *float64
+	LastShot  *time.Time
+}
+
+func (b Bean) Flavors() []string {
+	var out []string
+	for _, f := range strings.Split(b.FlavorNotes, ",") {
+		if f = strings.TrimSpace(f); f != "" {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+func (b Bean) Axes() []Axis {
+	return []Axis{
+		{"aroma", "Aroma", b.Aroma},
+		{"acidity", "Acidity", b.Acidity},
+		{"sweetness", "Sweetness", b.Sweetness},
+		{"body", "Body", b.Body},
+		{"bitterness", "Bitterness", b.Bitterness},
+		{"aftertaste", "Finish", b.Aftertaste},
+		{"balance", "Balance", b.Balance},
+	}
+}
+
+func (b Bean) Rated() bool { return b.Overall != nil }
+
+// DaysOffRoast returns days since roast, or -1.
+func (b Bean) DaysOffRoast() int {
+	if b.RoastDate == nil {
+		return -1
+	}
+	return int(time.Since(*b.RoastDate).Hours() / 24)
+}
+
+const beanCols = `b.id, b.name, b.roaster, b.origin, b.region, b.varietal, b.process, b.roast_level, b.is_blend,
+	b.roast_date, b.weight_g, b.price, b.flavor_notes, b.notes, b.score_overall, b.aroma, b.acidity, b.sweetness,
+	b.body, b.bitterness, b.aftertaste, b.balance, b.buy_again, b.created_at,
+	COALESCE(st.n, 0), st.avg, st.last`
+
+const beanFrom = ` FROM beans b LEFT JOIN LATERAL (
+	SELECT COUNT(*) AS n, AVG(s.rating)::float8 AS avg, MAX(s.brewed_at) AS last
+	FROM shots s WHERE s.bean_id = b.id) st ON true`
+
+func scanBean(sc interface{ Scan(...any) error }) (Bean, error) {
+	var b Bean
+	err := sc.Scan(&b.ID, &b.Name, &b.Roaster, &b.Origin, &b.Region, &b.Varietal, &b.Process, &b.RoastLevel, &b.IsBlend,
+		&b.RoastDate, &b.WeightG, &b.Price, &b.FlavorNotes, &b.Notes, &b.Overall, &b.Aroma, &b.Acidity, &b.Sweetness,
+		&b.Body, &b.Bitterness, &b.Aftertaste, &b.Balance, &b.BuyAgain, &b.CreatedAt,
+		&b.ShotCount, &b.AvgShot, &b.LastShot)
+	return b, err
+}
+
+func listBeans(ctx context.Context, db *sql.DB, q, sort string, limit int) ([]Bean, error) {
+	order := "b.created_at DESC"
+	switch sort {
+	case "score":
+		order = "b.score_overall DESC NULLS LAST, b.created_at DESC"
+	case "name":
+		order = "lower(b.name)"
+	case "brewed":
+		order = "st.last DESC NULLS LAST"
+	}
+	query := `SELECT ` + beanCols + beanFrom
+	var args []any
+	if q != "" {
+		query += ` WHERE b.name ILIKE $1 OR b.roaster ILIKE $1 OR b.origin ILIKE $1 OR b.flavor_notes ILIKE $1`
+		args = append(args, "%"+q+"%")
+	}
+	query += ` ORDER BY ` + order
+	if limit > 0 {
+		query += ` LIMIT ` + itoa(limit)
+	}
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Bean
+	for rows.Next() {
+		b, err := scanBean(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+func getBean(ctx context.Context, db *sql.DB, id int64) (Bean, error) {
+	return scanBean(db.QueryRowContext(ctx, `SELECT `+beanCols+beanFrom+` WHERE b.id=$1`, id))
+}
+
+func saveBean(ctx context.Context, db *sql.DB, b *Bean) error {
+	args := []any{b.Name, b.Roaster, b.Origin, b.Region, b.Varietal, b.Process, b.RoastLevel, b.IsBlend,
+		b.RoastDate, b.WeightG, b.Price, b.FlavorNotes, b.Notes, b.Overall, b.Aroma, b.Acidity, b.Sweetness,
+		b.Body, b.Bitterness, b.Aftertaste, b.Balance, b.BuyAgain}
+	if b.ID == 0 {
+		return db.QueryRowContext(ctx, `INSERT INTO beans (name, roaster, origin, region, varietal, process, roast_level,
+			is_blend, roast_date, weight_g, price, flavor_notes, notes, score_overall, aroma, acidity, sweetness, body,
+			bitterness, aftertaste, balance, buy_again)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING id`,
+			args...).Scan(&b.ID)
+	}
+	_, err := db.ExecContext(ctx, `UPDATE beans SET name=$1, roaster=$2, origin=$3, region=$4, varietal=$5, process=$6,
+		roast_level=$7, is_blend=$8, roast_date=$9, weight_g=$10, price=$11, flavor_notes=$12, notes=$13,
+		score_overall=$14, aroma=$15, acidity=$16, sweetness=$17, body=$18, bitterness=$19, aftertaste=$20,
+		balance=$21, buy_again=$22 WHERE id=$23`, append(args, b.ID)...)
+	return err
+}
+
+// ---------- recipes ----------
+
+type Recipe struct {
+	ID           int64
+	Name         string
+	BrewerID     *int64
+	GrinderID    *int64
+	BeanID       *int64
+	Basket       string
+	BasketG      *float64
+	DoseG        float64
+	YieldG       float64
+	TimeS        *int64
+	TempC        *float64
+	GrindSetting string
+	PreinfusionS *int64
+	PressureBar  *float64
+	Prep         string
+	Notes        string
+	CreatedAt    time.Time
+
+	BrewerName  string
+	BrewMethod  string
+	GrinderName string
+	BeanName    string
+	ShotCount   int64
+	AvgRating   *float64
+}
+
+func (r Recipe) Ratio() float64 {
+	if r.DoseG == 0 {
+		return 0
+	}
+	return r.YieldG / r.DoseG
+}
+
+// DosePct is the share of the dose in (dose + yield), for the ratio bar.
+func (r Recipe) DosePct() float64 {
+	if r.DoseG+r.YieldG == 0 {
+		return 0
+	}
+	return r.DoseG / (r.DoseG + r.YieldG) * 100
+}
+
+const recipeCols = `r.id, r.name, r.brewer_id, r.grinder_id, r.bean_id, r.basket, r.basket_g, r.dose_g, r.yield_g,
+	r.time_s, r.temp_c, r.grind_setting, r.preinfusion_s, r.pressure_bar, r.prep, r.notes, r.created_at,
+	COALESCE(br.name,''), COALESCE(br.method,''), COALESCE(g.name,''), COALESCE(be.name,''),
+	(SELECT COUNT(*) FROM shots s WHERE s.recipe_id = r.id),
+	(SELECT AVG(s.rating)::float8 FROM shots s WHERE s.recipe_id = r.id)`
+
+const recipeFrom = ` FROM recipes r
+	LEFT JOIN brewers br ON br.id = r.brewer_id
+	LEFT JOIN grinders g ON g.id = r.grinder_id
+	LEFT JOIN beans be ON be.id = r.bean_id`
+
+func scanRecipe(sc interface{ Scan(...any) error }) (Recipe, error) {
+	var r Recipe
+	err := sc.Scan(&r.ID, &r.Name, &r.BrewerID, &r.GrinderID, &r.BeanID, &r.Basket, &r.BasketG, &r.DoseG, &r.YieldG,
+		&r.TimeS, &r.TempC, &r.GrindSetting, &r.PreinfusionS, &r.PressureBar, &r.Prep, &r.Notes, &r.CreatedAt,
+		&r.BrewerName, &r.BrewMethod, &r.GrinderName, &r.BeanName, &r.ShotCount, &r.AvgRating)
+	return r, err
+}
+
+func listRecipes(ctx context.Context, db *sql.DB, order string) ([]Recipe, error) {
+	if order == "" {
+		order = "lower(r.name)"
+	}
+	rows, err := db.QueryContext(ctx, `SELECT `+recipeCols+recipeFrom+` ORDER BY `+order)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Recipe
+	for rows.Next() {
+		r, err := scanRecipe(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+func getRecipe(ctx context.Context, db *sql.DB, id int64) (Recipe, error) {
+	return scanRecipe(db.QueryRowContext(ctx, `SELECT `+recipeCols+recipeFrom+` WHERE r.id=$1`, id))
+}
+
+func saveRecipe(ctx context.Context, db *sql.DB, r *Recipe) error {
+	args := []any{r.Name, r.BrewerID, r.GrinderID, r.BeanID, r.Basket, r.BasketG, r.DoseG, r.YieldG, r.TimeS, r.TempC,
+		r.GrindSetting, r.PreinfusionS, r.PressureBar, r.Prep, r.Notes}
+	if r.ID == 0 {
+		return db.QueryRowContext(ctx, `INSERT INTO recipes (name, brewer_id, grinder_id, bean_id, basket, basket_g,
+			dose_g, yield_g, time_s, temp_c, grind_setting, preinfusion_s, pressure_bar, prep, notes)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`, args...).Scan(&r.ID)
+	}
+	_, err := db.ExecContext(ctx, `UPDATE recipes SET name=$1, brewer_id=$2, grinder_id=$3, bean_id=$4, basket=$5,
+		basket_g=$6, dose_g=$7, yield_g=$8, time_s=$9, temp_c=$10, grind_setting=$11, preinfusion_s=$12,
+		pressure_bar=$13, prep=$14, notes=$15 WHERE id=$16`, append(args, r.ID)...)
+	return err
+}
+
+// ---------- shots ----------
+
+type Shot struct {
+	ID           int64
+	BeanID       *int64
+	RecipeID     *int64
+	BrewerID     *int64
+	GrinderID    *int64
+	GrindSetting string
+	DoseG        *float64
+	YieldG       *float64
+	TimeS        *int64
+	TempC        *float64
+	Rating       *int64
+	Taste        *int64
+	Notes        string
+	BrewedAt     time.Time
+
+	BeanName    string
+	BeanRoast   string
+	BeanProcess string
+	RecipeName  string
+	BrewerName  string
+	BrewMethod  string
+	GrinderName string
+}
+
+func (s Shot) Ratio() float64 {
+	if s.DoseG == nil || s.YieldG == nil || *s.DoseG == 0 {
+		return 0
+	}
+	return *s.YieldG / *s.DoseG
+}
+
+// Flow in g/s, or 0.
+func (s Shot) Flow() float64 {
+	if s.YieldG == nil || s.TimeS == nil || *s.TimeS == 0 {
+		return 0
+	}
+	return *s.YieldG / float64(*s.TimeS)
+}
+
+const shotCols = `s.id, s.bean_id, s.recipe_id, s.brewer_id, s.grinder_id, s.grind_setting, s.dose_g, s.yield_g,
+	s.time_s, s.temp_c, s.rating, s.taste, s.notes, s.brewed_at,
+	COALESCE(be.name,''), COALESCE(be.roast_level,''), COALESCE(be.process,''), COALESCE(r.name,''),
+	COALESCE(br.name,''), COALESCE(br.method,''), COALESCE(g.name,'')`
+
+const shotFrom = ` FROM shots s
+	LEFT JOIN beans be ON be.id = s.bean_id
+	LEFT JOIN recipes r ON r.id = s.recipe_id
+	LEFT JOIN brewers br ON br.id = s.brewer_id
+	LEFT JOIN grinders g ON g.id = s.grinder_id`
+
+func scanShot(sc interface{ Scan(...any) error }) (Shot, error) {
+	var s Shot
+	err := sc.Scan(&s.ID, &s.BeanID, &s.RecipeID, &s.BrewerID, &s.GrinderID, &s.GrindSetting, &s.DoseG, &s.YieldG,
+		&s.TimeS, &s.TempC, &s.Rating, &s.Taste, &s.Notes, &s.BrewedAt,
+		&s.BeanName, &s.BeanRoast, &s.BeanProcess, &s.RecipeName, &s.BrewerName, &s.BrewMethod, &s.GrinderName)
+	return s, err
+}
+
+type ShotFilter struct {
+	BeanID   int64
+	RecipeID int64
+	Limit    int
+}
+
+func listShots(ctx context.Context, db *sql.DB, f ShotFilter) ([]Shot, error) {
+	query := `SELECT ` + shotCols + shotFrom
+	var where []string
+	var args []any
+	if f.BeanID > 0 {
+		args = append(args, f.BeanID)
+		where = append(where, "s.bean_id = $"+itoa(len(args)))
+	}
+	if f.RecipeID > 0 {
+		args = append(args, f.RecipeID)
+		where = append(where, "s.recipe_id = $"+itoa(len(args)))
+	}
+	if len(where) > 0 {
+		query += " WHERE " + strings.Join(where, " AND ")
+	}
+	query += " ORDER BY s.brewed_at DESC, s.id DESC"
+	if f.Limit > 0 {
+		query += " LIMIT " + itoa(f.Limit)
+	}
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Shot
+	for rows.Next() {
+		s, err := scanShot(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+func getShot(ctx context.Context, db *sql.DB, id int64) (Shot, error) {
+	return scanShot(db.QueryRowContext(ctx, `SELECT `+shotCols+shotFrom+` WHERE s.id=$1`, id))
+}
+
+func saveShot(ctx context.Context, db *sql.DB, s *Shot) error {
+	args := []any{s.BeanID, s.RecipeID, s.BrewerID, s.GrinderID, s.GrindSetting, s.DoseG, s.YieldG, s.TimeS, s.TempC,
+		s.Rating, s.Taste, s.Notes, s.BrewedAt}
+	if s.ID == 0 {
+		return db.QueryRowContext(ctx, `INSERT INTO shots (bean_id, recipe_id, brewer_id, grinder_id, grind_setting,
+			dose_g, yield_g, time_s, temp_c, rating, taste, notes, brewed_at)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`, args...).Scan(&s.ID)
+	}
+	_, err := db.ExecContext(ctx, `UPDATE shots SET bean_id=$1, recipe_id=$2, brewer_id=$3, grinder_id=$4,
+		grind_setting=$5, dose_g=$6, yield_g=$7, time_s=$8, temp_c=$9, rating=$10, taste=$11, notes=$12, brewed_at=$13
+		WHERE id=$14`, append(args, s.ID)...)
+	return err
+}
+
+// ---------- generic ----------
+
+func deleteRow(ctx context.Context, db *sql.DB, table string, id int64) error {
+	switch table {
+	case "beans", "grinders", "brewers", "recipes", "shots":
+	default:
+		panic("deleteRow: bad table " + table)
+	}
+	_, err := db.ExecContext(ctx, `DELETE FROM `+table+` WHERE id=$1`, id)
+	return err
+}
+
+type Stats struct {
+	Beans, Shots, ShotsWeek, Recipes, Grinders, Brewers int64
+	AvgRating30                                         *float64
+	FavBean                                             string
+	FavBeanID                                           int64
+}
+
+func loadStats(ctx context.Context, db *sql.DB) (Stats, error) {
+	var s Stats
+	err := db.QueryRowContext(ctx, `SELECT
+		(SELECT COUNT(*) FROM beans),
+		(SELECT COUNT(*) FROM shots),
+		(SELECT COUNT(*) FROM shots WHERE brewed_at > now() - interval '7 days'),
+		(SELECT COUNT(*) FROM recipes),
+		(SELECT COUNT(*) FROM grinders),
+		(SELECT COUNT(*) FROM brewers),
+		(SELECT AVG(rating)::float8 FROM shots WHERE brewed_at > now() - interval '30 days')`).
+		Scan(&s.Beans, &s.Shots, &s.ShotsWeek, &s.Recipes, &s.Grinders, &s.Brewers, &s.AvgRating30)
+	if err != nil {
+		return s, err
+	}
+	_ = db.QueryRowContext(ctx, `SELECT id, name FROM beans WHERE score_overall IS NOT NULL
+		ORDER BY score_overall DESC, created_at DESC LIMIT 1`).Scan(&s.FavBeanID, &s.FavBean)
+	return s, nil
+}
+
+func allFlavorNotes(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `SELECT DISTINCT lower(trim(f)) FROM beans, unnest(string_to_array(flavor_notes, ',')) f
+		WHERE trim(f) <> '' LIMIT 40`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// lastShot returns the most recent shot (for sensible form defaults).
+func lastShot(ctx context.Context, db *sql.DB) (Shot, bool) {
+	s, err := scanShot(db.QueryRowContext(ctx, `SELECT `+shotCols+shotFrom+` ORDER BY s.brewed_at DESC, s.id DESC LIMIT 1`))
+	return s, err == nil
+}

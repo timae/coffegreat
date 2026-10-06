@@ -1,0 +1,37 @@
+{{define "content"}}
+{{$b := .Brewer}}
+<a class="back" href="/gear">{{icon "back"}} Gear</a>
+<form class="form narrow" method="post" action="{{if .IsNew}}/gear/brewers{{else}}/gear/brewers/{{$b.ID}}{{end}}">
+  <header class="form-head">
+    <p class="eyebrow">{{if .IsNew}}New machine{{else}}Editing machine{{end}}</p>
+    <h1 class="display">{{if .IsNew}}The machine{{else}}{{$b.Name}}{{end}}</h1>
+  </header>
+  {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
+
+  <section class="form-section">
+    <div class="fields">
+      <label class="field"><span>Name</span>
+        <input name="name" value="{{$b.Name}}" required maxlength="120" placeholder="e.g. Linea Micra, V60 02" {{if .IsNew}}autofocus{{end}}></label>
+      <label class="field"><span>Brand</span>
+        <input name="brand" value="{{$b.Brand}}" maxlength="120" placeholder="La Marzocco, Hario…"></label>
+      <fieldset class="field span-2"><legend>Brew method</legend>
+        <div class="pills">
+          {{range opts "method"}}<label><input type="radio" name="method" value="{{.}}" {{if eqi . $b.Method}}checked{{end}}><span>{{.}}</span></label>{{end}}
+        </div>
+      </fieldset>
+      <label class="field" data-show-when="method=Espresso"><span>Portafilter <em>mm</em></span>
+        <input type="number" name="portafilter_mm" value="{{num $b.PortafilterMM}}" min="0" max="80" inputmode="numeric" placeholder="58"></label>
+      <label class="field span-2"><span>Notes</span>
+        <textarea name="notes" rows="3" maxlength="2000" placeholder="Boiler, PID offset, mods…">{{$b.Notes}}</textarea></label>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    {{if not .IsNew}}<button class="btn btn-ghost danger" type="submit" form="delete-form">{{icon "trash"}}<span>Delete</span></button>{{end}}
+    <span class="spacer"></span>
+    <a class="btn btn-ghost" href="/gear">Cancel</a>
+    <button class="btn btn-accent btn-lg" type="submit">Save machine</button>
+  </div>
+</form>
+{{if not .IsNew}}<form id="delete-form" method="post" action="/gear/brewers/{{$b.ID}}/delete" data-confirm="Remove this machine? Shots keep their data."></form>{{end}}
+{{end}}

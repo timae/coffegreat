@@ -1,0 +1,56 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{.Title}} · coffee (g)rate</title>
+<meta name="theme-color" content="#F2EBDD" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15100D" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="(g)rate">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..800,0..100,0..1;1,9..144,300..800,0..100,0..1&family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/static/app.css?v={{.Asset}}">
+<script src="/static/app.js?v={{.Asset}}" defer></script>
+</head>
+<body class="nav-{{or .Nav "none"}}">
+{{if .Authed}}
+<header class="topbar">
+  <a class="wordmark" href="/" aria-label="coffee (g)rate — home">coffee <em><span>(g)</span>rate</em></a>
+  <nav class="mainnav" aria-label="Main">
+    <a href="/" {{if eq .Nav "home"}}aria-current="page"{{end}}>Today</a>
+    <a href="/beans" {{if eq .Nav "beans"}}aria-current="page"{{end}}>Beans</a>
+    <a href="/shots" {{if eq .Nav "shots"}}aria-current="page"{{end}}>Shots</a>
+    <a href="/recipes" {{if eq .Nav "recipes"}}aria-current="page"{{end}}>Recipes</a>
+    <a href="/gear" {{if eq .Nav "gear"}}aria-current="page"{{end}}>Gear</a>
+  </nav>
+  <div class="topbar-actions">
+    <a class="btn btn-accent hide-sm" href="/shots/new">{{icon "plus"}}<span>Log a shot</span></a>
+    <a class="icon-btn show-sm" href="/gear" title="Gear" aria-label="Gear" {{if eq .Nav "gear"}}aria-current="page"{{end}}>{{icon "grinder"}}</a>
+    {{if .AuthEnabled}}
+    <form method="post" action="/logout"><button class="icon-btn" type="submit" title="Sign out" aria-label="Sign out">{{icon "logout"}}</button></form>
+    {{end}}
+  </div>
+</header>
+{{end}}
+
+{{with .Flash}}<div class="flash" role="status" data-flash>{{.}}</div>{{end}}
+
+<main class="wrap" id="main">
+{{template "content" .}}
+</main>
+
+{{if .Authed}}
+<nav class="tabbar" aria-label="Main">
+  <a href="/" {{if eq .Nav "home"}}aria-current="page"{{end}}>{{icon "home"}}<span>Today</span></a>
+  <a href="/beans" {{if eq .Nav "beans"}}aria-current="page"{{end}}>{{icon "bean"}}<span>Beans</span></a>
+  <a class="tab-plus" href="/shots/new" aria-label="Log a shot">{{icon "plus"}}</a>
+  <a href="/shots" {{if eq .Nav "shots"}}aria-current="page"{{end}}>{{icon "cup"}}<span>Shots</span></a>
+  <a href="/recipes" {{if eq .Nav "recipes"}}aria-current="page"{{end}}>{{icon "dial"}}<span>Recipes</span></a>
+</nav>
+{{end}}
+</body>
+</html>{{end}}

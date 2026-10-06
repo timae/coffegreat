@@ -1,0 +1,50 @@
+{{define "content"}}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Your bar</p>
+    <h1 class="display">Gear</h1>
+  </div>
+</header>
+
+<div class="grid-2 gear">
+  <section>
+    <header class="section-head">
+      <h2>{{icon "grinder"}} Grinders</h2>
+      <a class="btn btn-ghost" href="/gear/grinders/new">{{icon "plus"}}<span>Add</span></a>
+    </header>
+    {{range .Grinders}}
+    <a class="gear-card" href="/gear/grinders/{{.ID}}/edit">
+      <span class="gear-glyph burr-{{lower .BurrType}}" aria-hidden="true"></span>
+      <span class="gear-main">
+        {{with .Brand}}<small class="eyebrow">{{.}}</small>{{end}}
+        <strong>{{.Name}}</strong>
+        <span class="muted">{{or .BurrType "Burrs unknown"}}{{with .BurrSizeMM}} · {{num .}} mm{{end}}</span>
+      </span>
+      <span class="gear-count"><b>{{.ShotCount}}</b><small>shots</small></span>
+    </a>
+    {{else}}
+      {{template "empty" (dict "Icon" "grinder" "Title" "No grinder yet" "Text" "The single most important piece of kit. Add it first." "Href" "/gear/grinders/new" "CTA" "Add grinder")}}
+    {{end}}
+  </section>
+
+  <section>
+    <header class="section-head">
+      <h2>{{icon "cup"}} Machines &amp; brewers</h2>
+      <a class="btn btn-ghost" href="/gear/brewers/new">{{icon "plus"}}<span>Add</span></a>
+    </header>
+    {{range .Brewers}}
+    <a class="gear-card" href="/gear/brewers/{{.ID}}/edit">
+      <span class="gear-glyph method" aria-hidden="true">{{icon "cup"}}</span>
+      <span class="gear-main">
+        {{with .Brand}}<small class="eyebrow">{{.}}</small>{{end}}
+        <strong>{{.Name}}</strong>
+        <span class="muted">{{.Method}}{{with .PortafilterMM}} · {{num .}} mm portafilter{{end}}</span>
+      </span>
+      <span class="gear-count"><b>{{.ShotCount}}</b><small>shots</small></span>
+    </a>
+    {{else}}
+      {{template "empty" (dict "Icon" "cup" "Title" "No machine yet" "Text" "Espresso machine, V60, AeroPress — whatever makes your cup." "Href" "/gear/brewers/new" "CTA" "Add brewer")}}
+    {{end}}
+  </section>
+</div>
+{{end}}

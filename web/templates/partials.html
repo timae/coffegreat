@@ -1,0 +1,51 @@
+{{define "cups"}}{{$r := ival .}}<span class="cups" role="img" aria-label="{{if .}}{{$r}} of 5{{else}}not rated{{end}}">{{range seq 1 5}}<i class="{{if le . $r}}on{{end}}"></i>{{end}}</span>{{end}}
+
+{{define "bean_card"}}
+<a class="bean-card" href="/beans/{{.ID}}">
+  <div class="bean-art">
+    {{label .}}
+    {{if .Rated}}<span class="score-badge" title="Overall score">{{num .Overall}}</span>{{end}}
+    {{if .BuyAgain}}<span class="heart-badge" title="Would buy again">{{icon "heart"}}</span>{{end}}
+  </div>
+  <div class="bean-meta">
+    {{with .Roaster}}<p class="bean-roaster">{{.}}</p>{{end}}
+    <h3 class="bean-name">{{.Name}}</h3>
+    <p class="bean-sub">{{if .IsBlend}}Blend{{else}}{{or .Origin "Single origin"}}{{end}}{{with .Process}} · {{.}}{{end}}{{with .RoastLevel}} · {{.}}{{end}}</p>
+    {{with .Flavors}}<ul class="chips small">{{range $i, $f := .}}{{if lt $i 3}}<li>{{$f}}</li>{{end}}{{end}}</ul>{{end}}
+  </div>
+</a>
+{{end}}
+
+{{define "shot_row"}}
+<li class="shot">
+  <a class="shot-link" href="/shots/{{.ID}}/edit">
+    <span class="shot-time mono">{{clock .BrewedAt}}{{with shortDay .BrewedAt}}<small>{{.}}</small>{{end}}</span>
+    <span class="shot-sw">{{swatch .BeanRoast .BeanProcess}}</span>
+    <span class="shot-main">
+      <strong>{{or .BeanName "Unknown bean"}}</strong>
+      <small>{{or .RecipeName .BrewMethod "Freestyle"}}{{with .GrindSetting}} · grind {{.}}{{end}}{{with .TempC}} · {{num .}}°{{end}}</small>
+    </span>
+    <span class="shot-nums mono">
+      {{if .DoseG}}{{num .DoseG}}<u>g</u> → {{num .YieldG}}<u>g</u>{{end}}
+      {{if .TimeS}}<span class="sep">·</span>{{num .TimeS}}<u>s</u>{{end}}
+      {{if gt .Ratio 0.0}}<em>{{ratio .Ratio}}</em>{{end}}
+    </span>
+    <span class="shot-rate">{{template "cups" .Rating}}{{if .Taste}}<span class="taste-dot t{{ival .Taste}}" title="{{taste .Taste}}"></span>{{end}}</span>
+  </a>
+</li>
+{{end}}
+
+{{define "empty"}}
+<div class="empty">
+  <div class="empty-icon">{{icon .Icon}}</div>
+  <p class="empty-title">{{.Title}}</p>
+  {{with .Text}}<p class="empty-text">{{.}}</p>{{end}}
+  {{with .Href}}<a class="btn btn-accent" href="{{.}}">{{icon "plus"}}<span>{{$.CTA}}</span></a>{{end}}
+</div>
+{{end}}
+
+{{define "delete"}}
+<form method="post" action="{{.Action}}" data-confirm="{{.Confirm}}" class="inline">
+  <button class="btn btn-ghost danger" type="submit">{{icon "trash"}}<span>Delete</span></button>
+</form>
+{{end}}

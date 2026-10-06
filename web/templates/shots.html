@@ -1,0 +1,28 @@
+{{define "content"}}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">The log</p>
+    <h1 class="display">Shots<sup>{{.Count}}</sup></h1>
+  </div>
+  <a class="btn btn-accent" href="/shots/new">{{icon "plus"}}<span>Log a shot</span></a>
+</header>
+
+{{if .Beans}}
+<nav class="pills compact filter" aria-label="Filter by coffee">
+  <a href="/shots" class="pill {{if eq .BeanID 0}}on{{end}}">All</a>
+  {{range .Beans}}<a href="/shots?bean={{.ID}}" class="pill {{if eq $.BeanID .ID}}on{{end}}">{{swatch .RoastLevel .Process}}{{.Name}}</a>{{end}}
+</nav>
+{{end}}
+
+{{if .Groups}}
+  <div class="panel pulse-panel">{{pulseBars .Pulse}}</div>
+  {{range .Groups}}
+  <section class="day">
+    <h2 class="day-label">{{.Label}}<span class="muted"> · {{len .Shots}}</span></h2>
+    <ul class="shot-list card">{{range .Shots}}{{template "shot_row" .}}{{end}}</ul>
+  </section>
+  {{end}}
+{{else}}
+  {{template "empty" (dict "Icon" "cup" "Title" "No shots logged" "Text" "Pull, sip, log. Dose, yield, time and a quick verdict — that's it." "Href" "/shots/new" "CTA" "Log a shot")}}
+{{end}}
+{{end}}

@@ -1,0 +1,107 @@
+{{define "content"}}
+{{$s := .Shot}}
+<a class="back" href="/shots">{{icon "back"}} Shot log</a>
+
+<form class="form" method="post" action="{{if .IsNew}}/shots{{else}}/shots/{{$s.ID}}{{end}}" data-ratio-form data-shot-form>
+  <header class="form-head">
+    <p class="eyebrow">{{if .IsNew}}{{today}}{{else}}{{date $s.BrewedAt}} · {{clock $s.BrewedAt}}{{end}}</p>
+    <h1 class="display">{{if .IsNew}}Pull a shot{{else}}Shot №{{$s.ID}}{{end}}</h1>
+  </header>
+
+  {{if .Recipes}}
+  <section class="form-section">
+    <h2><span class="step">01</span> Start from a recipe</h2>
+    <div class="recipe-picker" role="radiogroup" aria-label="Recipe">
+      <label class="rp"><input type="radio" name="recipe_id" value="" {{if not $s.RecipeID}}checked{{end}}><span><b>Freestyle</b><small>no recipe</small></span></label>
+      {{range .Recipes}}
+      <label class="rp"><input type="radio" name="recipe_id" value="{{.ID}}" {{if isID $s.RecipeID .ID}}checked{{end}}
+        data-rec-dose="{{num .DoseG}}" data-rec-yield="{{num .YieldG}}" data-rec-time="{{num .TimeS}}" data-rec-temp="{{num .TempC}}"
+        data-rec-grind="{{.GrindSetting}}" data-rec-brewer="{{num .BrewerID}}" data-rec-grinder="{{num .GrinderID}}" data-rec-bean="{{num .BeanID}}">
+        <span><b>{{.Name}}</b><small class="mono">{{ratio .Ratio}} · {{num .DoseG}}→{{num .YieldG}}g</small></span></label>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
+  <section class="form-section">
+    <h2><span class="step">{{if .Recipes}}02{{else}}01{{end}}</span> What &amp; with what</h2>
+    <div class="fields three">
+      <label class="field"><span>Coffee</span>
+        <select name="bean_id">
+          <option value="">—</option>
+          {{range .Beans}}<option value="{{.ID}}" {{if isID $s.BeanID .ID}}selected{{end}}>{{.Name}}{{with .Roaster}} — {{.}}{{end}}</option>{{end}}
+        </select></label>
+      <label class="field"><span>Machine</span>
+        <select name="brewer_id" data-method-select>
+          <option value="">—</option>
+          {{range .Brewers}}<option value="{{.ID}}" data-method="{{.Method}}" {{if isID $s.BrewerID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+        </select></label>
+      <label class="field"><span>Grinder</span>
+        <select name="grinder_id">
+          <option value="">—</option>
+          {{range .Grinders}}<option value="{{.ID}}" {{if isID $s.GrinderID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+        </select></label>
+    </div>
+    {{if not .Beans}}<p class="hint">No coffees yet — <a href="/beans/new">add one</a> to track shots per bag.</p>{{end}}
+  </section>
+
+  <section class="form-section">
+    <h2><span class="step">{{if .Recipes}}03{{else}}02{{end}}</span> The numbers</h2>
+    <div class="scale-panel">
+      <label class="sp-cell"><span>Dose</span><input type="number" name="dose_g" value="{{num $s.DoseG}}" min="0" step="0.1" inputmode="decimal" placeholder="18" data-dose><u>g</u></label>
+      <label class="sp-cell"><span>Yield</span><input type="number" name="yield_g" value="{{num $s.YieldG}}" min="0" step="0.1" inputmode="decimal" placeholder="36" data-yield><u>g</u></label>
+      <div class="sp-cell sp-time">
+        <label for="time_s">Time</label>
+        <input id="time_s" type="number" name="time_s" value="{{num $s.TimeS}}" min="0" step="1" inputmode="numeric" placeholder="28" data-time><u>s</u>
+        <button type="button" class="timer-btn" data-timer aria-label="Start shot timer">{{icon "timer"}}<span data-timer-label>Start</span></button>
+      </div>
+      <label class="sp-cell"><span>Temp</span><input type="number" name="temp_c" value="{{num $s.TempC}}" min="0" max="100" step="0.5" inputmode="decimal" placeholder="93"><u>°C</u></label>
+      <label class="sp-cell"><span>Grind</span><input name="grind_setting" value="{{$s.GrindSetting}}" maxlength="60" placeholder="12"></label>
+      <div class="sp-readout">
+        <span class="rv-big" data-ratio>{{ratio $s.Ratio}}</span>
+        <span class="rv-name" data-ratio-name>{{ratioName $s.Ratio $s.BrewMethod}}</span>
+        <span class="mono sp-flow" data-flow>–</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <h2><span class="step">{{if .Recipes}}04{{else}}03{{end}}</span> How was it?</h2>
+    <div class="verdict">
+      <div class="field"><span>Rating</span>
+        <div class="cup-rate" role="radiogroup" aria-label="Rating">
+          {{range seq 1 5}}{{$n := sub6 .}}<input type="radio" id="r{{$n}}" name="rating" value="{{$n}}" {{if eq (ival $s.Rating) $n}}checked{{end}}><label for="r{{$n}}" title="{{$n}} of 5">{{icon "cup"}}</label>{{end}}
+        </div>
+      </div>
+      <div class="field"><span>Taste</span>
+        <div class="taste-scale" role="radiogroup" aria-label="Sour to bitter">
+          {{$t := $s.Taste}}
+          <label><input type="radio" name="taste" value="-2" {{if and $t (eq (ival $t) -2)}}checked{{end}}><span>Sour</span></label>
+          <label><input type="radio" name="taste" value="-1" {{if and $t (eq (ival $t) -1)}}checked{{end}}><span>Sour-ish</span></label>
+          <label><input type="radio" name="taste" value="0" {{if and $t (eq (ival $t) 0)}}checked{{end}}><span>Balanced</span></label>
+          <label><input type="radio" name="taste" value="1" {{if and $t (eq (ival $t) 1)}}checked{{end}}><span>Bitter-ish</span></label>
+          <label><input type="radio" name="taste" value="2" {{if and $t (eq (ival $t) 2)}}checked{{end}}><span>Bitter</span></label>
+        </div>
+        <p class="hint" data-taste-hint>{{or (tasteHint $t) "Sour means under-extracted, bitter means over. Tap to get a nudge."}}</p>
+      </div>
+    </div>
+    <div class="fields">
+      <label class="field span-2"><span>Notes</span>
+        <textarea name="notes" rows="2" maxlength="4000" placeholder="Channeling? Milk drink? How did it taste?">{{$s.Notes}}</textarea></label>
+      <label class="field"><span>Pulled at</span>
+        <input type="datetime-local" name="brewed_at" value="{{dtInput $s.BrewedAt}}"></label>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    {{if not .IsNew}}
+      <button class="btn btn-ghost danger" type="submit" form="delete-form">{{icon "trash"}}<span>Delete</span></button>
+      <a class="btn btn-ghost" href="/shots/new?again={{$s.ID}}">{{icon "repeat"}}<span>Pull again</span></a>
+    {{end}}
+    <span class="spacer"></span>
+    <a class="btn btn-ghost" href="/shots">Cancel</a>
+    <button class="btn btn-accent btn-lg" type="submit">{{if .IsNew}}Log shot{{else}}Save{{end}}</button>
+  </div>
+</form>
+{{if not .IsNew}}<form id="delete-form" method="post" action="/shots/{{$s.ID}}/delete" data-confirm="Delete this shot?"></form>{{end}}
+{{end}}

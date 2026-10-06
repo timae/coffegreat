@@ -1,0 +1,104 @@
+{{define "content"}}
+{{$b := .Bean}}
+<a class="back" href="{{if .IsNew}}/beans{{else}}/beans/{{$b.ID}}{{end}}">{{icon "back"}} {{if .IsNew}}All beans{{else}}Back to {{$b.Name}}{{end}}</a>
+
+<form class="form" method="post" action="{{if .IsNew}}/beans{{else}}/beans/{{$b.ID}}{{end}}">
+  <header class="form-head">
+    <p class="eyebrow">{{if .IsNew}}New on the shelf{{else}}Editing{{end}}</p>
+    <h1 class="display">{{if .IsNew}}Add a coffee{{else}}{{$b.Name}}{{end}}</h1>
+  </header>
+  {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
+
+  <section class="form-section">
+    <h2><span class="step">01</span> The bag</h2>
+    <div class="fields">
+      <label class="field span-2"><span>Name</span>
+        <input name="name" value="{{$b.Name}}" required maxlength="120" placeholder="e.g. Kochere Natural" {{if .IsNew}}autofocus{{end}}></label>
+      <label class="field"><span>Roaster</span>
+        <input name="roaster" value="{{$b.Roaster}}" maxlength="120" placeholder="Who roasted it?"></label>
+      <div class="field"><span>Type</span>
+        <div class="seg">
+          <label><input type="radio" name="is_blend" value="0" {{if not $b.IsBlend}}checked{{end}}><span>Single origin</span></label>
+          <label><input type="radio" name="is_blend" value="1" {{if $b.IsBlend}}checked{{end}}><span>Blend</span></label>
+        </div>
+      </div>
+      <label class="field"><span>Origin</span>
+        <input name="origin" value="{{$b.Origin}}" maxlength="120" placeholder="Ethiopia, Colombia, Brazil + India…"></label>
+      <label class="field"><span>Region / farm</span>
+        <input name="region" value="{{$b.Region}}" maxlength="120" placeholder="Yirgacheffe, Huila…"></label>
+      <label class="field"><span>Varietal</span>
+        <input name="varietal" value="{{$b.Varietal}}" maxlength="120" placeholder="Heirloom, Caturra, Gesha…"></label>
+      <label class="field"><span>Roast date</span>
+        <input type="date" name="roast_date" value="{{dateInput $b.RoastDate}}"></label>
+
+      <fieldset class="field span-2"><legend>Process</legend>
+        <div class="pills">
+          {{range opts "process"}}<label><input type="radio" name="process" value="{{.}}" {{if eqi . $b.Process}}checked{{end}}><span class="proc proc-{{lower .}}">{{.}}</span></label>{{end}}
+        </div>
+      </fieldset>
+      <fieldset class="field span-2"><legend>Roast level</legend>
+        <div class="pills roast-scale">
+          {{range opts "roast"}}<label><input type="radio" name="roast_level" value="{{.}}" {{if eqi . $b.RoastLevel}}checked{{end}}><span><i class="roast-dot roast-{{lower .}}"></i>{{.}}</span></label>{{end}}
+        </div>
+      </fieldset>
+
+      <label class="field"><span>Bag size <em>g</em></span>
+        <input type="number" name="weight_g" value="{{num $b.WeightG}}" min="0" step="1" inputmode="numeric" placeholder="250"></label>
+      <label class="field"><span>Price</span>
+        <input type="number" name="price" value="{{num1 $b.Price}}" min="0" step="0.05" inputmode="decimal" placeholder="18.50"></label>
+    </div>
+  </section>
+
+  <section class="form-section" id="rate">
+    <h2><span class="step">02</span> In the cup</h2>
+    <div class="fields">
+      <label class="field span-2"><span>Flavour notes <em>comma separated</em></span>
+        <input name="flavor_notes" id="flavor_notes" value="{{$b.FlavorNotes}}" maxlength="600" placeholder="blueberry, jasmine, cacao nib"></label>
+      <div class="span-2 chip-picker" data-flavor-picker>
+        {{range opts "flavors"}}<button type="button" class="chip-btn" data-add-flavor="{{.}}">{{.}}</button>{{end}}
+      </div>
+    </div>
+
+    <label class="switch">
+      <input type="checkbox" name="rated" value="1" data-toggle="#ratings" {{if $b.Rated}}checked{{end}}>
+      <span class="switch-ui"></span><span>I've tasted it — rate it</span>
+    </label>
+
+    <div id="ratings" class="ratings" {{if not $b.Rated}}hidden{{end}}>
+      <div class="overall">
+        <span class="overall-label">Overall</span>
+        <output class="overall-num" data-out="overall">{{if $b.Overall}}{{num $b.Overall}}{{else}}7{{end}}</output>
+        <input type="range" name="overall" min="0" max="10" step="0.5" value="{{if $b.Overall}}{{num $b.Overall}}{{else}}7{{end}}" class="range-big" aria-label="Overall score">
+      </div>
+      <div class="ratings-grid">
+        <div class="sliders">
+          {{range $b.Axes}}
+          <label class="slider">
+            <span class="slider-label">{{.Label}}</span>
+            <input type="range" min="0" max="10" step="1" name="{{.Key}}" value="{{if .Value}}{{ival .Value}}{{else}}5{{end}}" data-radar-input>
+            <output data-out="{{.Key}}">{{if .Value}}{{ival .Value}}{{else}}5{{end}}</output>
+          </label>
+          {{end}}
+        </div>
+        <div class="radar-wrap">{{radar $b}}</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" name="buy_again" value="1" {{if $b.BuyAgain}}checked{{end}}>
+        <span class="switch-ui"></span><span>Would buy again</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <h2><span class="step">03</span> Notes</h2>
+    <label class="field"><span>Anything worth remembering</span>
+      <textarea name="notes" rows="4" maxlength="4000" placeholder="Shines as a flat white. Opens up after day 10.">{{$b.Notes}}</textarea></label>
+  </section>
+
+  <div class="form-actions">
+    <span class="spacer"></span>
+    <a class="btn btn-ghost" href="{{if .IsNew}}/beans{{else}}/beans/{{$b.ID}}{{end}}">Cancel</a>
+    <button class="btn btn-accent btn-lg" type="submit">{{if .IsNew}}Add to shelf{{else}}Save changes{{end}}</button>
+  </div>
+</form>
+{{end}}

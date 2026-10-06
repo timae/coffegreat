@@ -1,0 +1,29 @@
+# Local development: `docker compose up --build` → http://localhost:8080
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: coffee
+      POSTGRES_PASSWORD: coffee
+      POSTGRES_DB: coffee
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coffee"]
+      interval: 2s
+      retries: 20
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://coffee:coffee@db:5432/coffee?sslmode=disable
+      APP_PASSWORD: ${APP_PASSWORD:-espresso}
+      TZ: Europe/Zurich
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

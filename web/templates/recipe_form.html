@@ -1,0 +1,96 @@
+{{define "content"}}
+{{$r := .Recipe}}
+<a class="back" href="/recipes">{{icon "back"}} Recipes</a>
+
+<form class="form" method="post" action="{{if .IsNew}}/recipes{{else}}/recipes/{{$r.ID}}{{end}}" data-ratio-form>
+  <header class="form-head">
+    <p class="eyebrow">{{if .IsNew}}New recipe{{else}}Editing recipe{{end}}</p>
+    <h1 class="display">{{if .IsNew}}Dial it in{{else}}{{$r.Name}}{{end}}</h1>
+  </header>
+  {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
+
+  <section class="form-section">
+    <h2><span class="step">01</span> Setup</h2>
+    <div class="fields">
+      <label class="field span-2"><span>Recipe name</span>
+        <input name="name" value="{{$r.Name}}" required maxlength="120" placeholder="Daily double, Light roast turbo…" {{if .IsNew}}autofocus{{end}}></label>
+      <label class="field"><span>Machine / method</span>
+        <select name="brewer_id" data-method-select>
+          <option value="">—</option>
+          {{range .Brewers}}<option value="{{.ID}}" data-method="{{.Method}}" {{if isID $r.BrewerID .ID}}selected{{end}}>{{.Name}} · {{.Method}}</option>{{end}}
+        </select></label>
+      <label class="field"><span>Grinder</span>
+        <select name="grinder_id">
+          <option value="">—</option>
+          {{range .Grinders}}<option value="{{.ID}}" {{if isID $r.GrinderID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+        </select></label>
+      <label class="field span-2"><span>For a specific coffee <em>optional</em></span>
+        <select name="bean_id">
+          <option value="">Any coffee</option>
+          {{range .Beans}}<option value="{{.ID}}" {{if isID $r.BeanID .ID}}selected{{end}}>{{.Name}}{{with .Roaster}} — {{.}}{{end}}</option>{{end}}
+        </select></label>
+    </div>
+    {{if or (not .Brewers) (not .Grinders)}}<p class="hint">Tip: <a href="/gear">add your gear</a> first so recipes can point to it.</p>{{end}}
+  </section>
+
+  <section class="form-section">
+    <h2><span class="step">02</span> Portafilter &amp; ratio</h2>
+    <div class="ratio-stage">
+      <div class="scale">
+        <label class="scale-cell"><span>Dose</span><input type="number" name="dose_g" value="{{num $r.DoseG}}" min="0" step="0.1" inputmode="decimal" required data-dose><u>g</u></label>
+        <span class="scale-arrow">{{icon "arrow"}}</span>
+        <label class="scale-cell"><span>Yield</span><input type="number" name="yield_g" value="{{num $r.YieldG}}" min="0" step="0.1" inputmode="decimal" required data-yield><u>g</u></label>
+      </div>
+      <div class="ratio-readout">
+        <span class="rv-big" data-ratio>{{ratio $r.Ratio}}</span>
+        <span class="rv-name" data-ratio-name>{{ratioName $r.Ratio $r.BrewMethod}}</span>
+        <div class="rv-bar"><span class="rv-dose" data-ratio-bar style="width: {{$r.DosePct}}%"></span><span class="rv-yield"></span></div>
+        <div class="presets" role="group" aria-label="Ratio presets">
+          <button type="button" data-ratio-preset="1.5">1:1.5</button>
+          <button type="button" data-ratio-preset="2">1:2</button>
+          <button type="button" data-ratio-preset="2.5">1:2.5</button>
+          <button type="button" data-ratio-preset="3">1:3</button>
+          <button type="button" data-ratio-preset="16">1:16</button>
+        </div>
+      </div>
+    </div>
+    <div class="fields">
+      <label class="field"><span>Basket</span>
+        <input name="basket" value="{{$r.Basket}}" maxlength="120" placeholder="IMS precision, VST, stock double…" list="basket-ideas"></label>
+      <label class="field"><span>Basket size <em>g</em></span>
+        <input type="number" name="basket_g" value="{{num $r.BasketG}}" min="0" step="0.5" inputmode="decimal" placeholder="18"></label>
+    </div>
+    <datalist id="basket-ideas"><option value="Stock double"><option value="Stock single"><option value="IMS Precision"><option value="VST"><option value="Pressurized"><option value="Triple"></datalist>
+  </section>
+
+  <section class="form-section">
+    <h2><span class="step">03</span> Extraction</h2>
+    <div class="fields three">
+      <label class="field"><span>Time <em>s</em></span><input type="number" name="time_s" value="{{num $r.TimeS}}" min="0" step="1" inputmode="numeric" placeholder="28" data-time></label>
+      <label class="field"><span>Temperature <em>°C</em></span><input type="number" name="temp_c" value="{{num $r.TempC}}" min="0" max="100" step="0.5" inputmode="decimal" placeholder="93"></label>
+      <label class="field"><span>Grind setting</span><input name="grind_setting" value="{{$r.GrindSetting}}" maxlength="60" placeholder="12, 2.4, 18 clicks…"></label>
+      <label class="field"><span>Pre-infusion <em>s</em></span><input type="number" name="preinfusion_s" value="{{num $r.PreinfusionS}}" min="0" step="1" inputmode="numeric" placeholder="5"></label>
+      <label class="field"><span>Pressure <em>bar</em></span><input type="number" name="pressure_bar" value="{{num $r.PressureBar}}" min="0" max="20" step="0.5" inputmode="decimal" placeholder="9"></label>
+      <p class="field flow-readout"><span>Flow</span><b class="mono" data-flow>–</b></p>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <h2><span class="step">04</span> Puck prep &amp; notes</h2>
+    <div class="fields">
+      <label class="field span-2"><span>Puck prep</span>
+        <input name="prep" value="{{$r.Prep}}" maxlength="600" placeholder="WDT, level tamp, puck screen…"></label>
+      <label class="field span-2"><span>Notes</span>
+        <textarea name="notes" rows="3" maxlength="4000" placeholder="What this recipe is for, what to tweak first.">{{$r.Notes}}</textarea></label>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    {{if not .IsNew}}<button class="btn btn-ghost danger" type="submit" form="delete-form">{{icon "trash"}}<span>Delete</span></button>{{end}}
+    <span class="spacer"></span>
+    <a class="btn btn-ghost" href="/recipes">Cancel</a>
+    <button class="btn btn-accent btn-lg" type="submit">Save recipe</button>
+  </div>
+</form>
+{{if not .IsNew}}<form id="delete-form" method="post" action="/recipes/{{$r.ID}}/delete" data-confirm="Delete this recipe? Shots keep their numbers."></form>{{end}}
+{{end}}

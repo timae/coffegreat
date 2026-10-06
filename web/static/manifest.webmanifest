@@ -1,0 +1,12 @@
+{
+  "name": "coffee (g)rate",
+  "short_name": "(g)rate",
+  "description": "A journal for every bag, every shot.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F2EBDD",
+  "theme_color": "#F2EBDD",
+  "icons": [
+    { "src": "/static/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
